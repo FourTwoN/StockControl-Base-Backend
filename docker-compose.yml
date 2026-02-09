@@ -20,7 +20,7 @@ services:
     image: dpage/pgadmin4:latest
     container_name: demeter-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@demeter.local
+      PGADMIN_DEFAULT_EMAIL: admin@demeter.ai
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "5050:80"

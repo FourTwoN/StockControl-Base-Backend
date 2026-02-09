@@ -2,6 +2,7 @@ package com.fortytwo.demeter.common.tenant;
 
 import io.agroal.api.AgroalPoolInterceptor;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.ContextNotActiveException;
 import jakarta.inject.Inject;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -14,7 +15,14 @@ public class RlsConnectionCustomizer implements AgroalPoolInterceptor {
 
     @Override
     public void onConnectionAcquire(Connection connection) {
-        String tenantId = tenantContext.getCurrentTenantId();
+        String tenantId;
+        try {
+            tenantId = tenantContext.getCurrentTenantId();
+        } catch (ContextNotActiveException ignored) {
+            // Startup/background DB access (e.g. Flyway) can happen without request scope.
+            return;
+        }
+
         if (tenantId != null && !tenantId.isBlank()) {
             try (var stmt = connection.prepareStatement("SET app.current_tenant = ?")) {
                 stmt.setString(1, tenantId);

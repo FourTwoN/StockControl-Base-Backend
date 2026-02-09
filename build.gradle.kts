@@ -38,4 +38,14 @@ subprojects {
         options.encoding = "UTF-8"
         options.compilerArgs.add("-parameters")
     }
+
+    val ensureMainResourcesOutput by tasks.registering {
+        doLast {
+            layout.buildDirectory.dir("resources/main").get().asFile.mkdirs()
+        }
+    }
+
+    tasks.named("processResources") {
+        finalizedBy(ensureMainResourcesOutput)
+    }
 }
