@@ -37,13 +37,118 @@
 - [x] **demeter-chatbot** (18 files): ChatSession, ChatMessage, ChatToolExecution, JSONB input/output, message roles
 
 ### FASE 5: Testing e Integracion
-- [ ] Test configuration (application.properties for test profile)
-- [ ] ProductControllerTest — CRUD integration tests
-- [ ] MultiTenantIsolationTest — tenant A/B data isolation verification
-- [ ] StockBatchControllerTest — batch CRUD + status transitions
-- [ ] SaleFlowTest — end-to-end: product → batch → sale → stock movement
-- [ ] HealthCheckTest — /q/health/live, /q/health/ready
-- [ ] OpenApiTest — /q/openapi, Swagger UI
+- [x] Test configuration (application.properties for test profile, quarkus-test-security dependency)
+- [x] ProductControllerTest — 7 CRUD integration tests
+- [x] MultiTenantIsolationTest — 3 tenant A/B data isolation tests (products, batches, sales)
+- [x] StockBatchControllerTest — 10 batch CRUD + status transitions + validation tests
+- [x] SaleFlowTest — 14 E2E: product → batch → sale → complete/cancel + state transitions
+- [x] HealthCheckTest — 3 tests: /q/health/live, /q/health/ready, /q/health
+- [x] OpenApiTest — 5 tests: /q/openapi, Swagger UI, paths verification
+
+### FASE 6: Tenant Config — Persistencia y Endpoint para Frontend
+
+Spec del frontend: el frontend necesita UN endpoint al iniciar para resolver la personalizacion del tenant.
+
+#### Endpoint requerido
+
+```
+GET /api/v1/tenants/{tenantId}/config    (@PermitAll — se llama antes del login)
+```
+
+#### Response JSON esperado
+
+```json
+{
+  "id": "go-bar",
+  "name": "Go Bar",
+  "industry": "COMERCIANTES",
+  "theme": {
+    "primary": "#FF6B35",
+    "secondary": "#0F172A",
+    "accent": "#E65100",
+    "background": "#F8FAFC",
+    "logoUrl": "https://cdn.demeter.app/go-bar/logo.png",
+    "appName": "Go Bar Stock"
+  },
+  "enabledModules": ["inventario", "productos", "ventas", "ubicaciones", "fotos"],
+  "settings": {
+    "currency": "ARS",
+    "timezone": "America/Argentina/Buenos_Aires"
+  }
+}
+```
+
+#### enabledModules — valores validos (strings exactos)
+
+| Key | Tipo | Descripcion |
+|-----|------|-------------|
+| inventario | core | Lotes de stock, movimientos |
+| productos | core | Catalogo de productos, categorias, familias |
+| ventas | core | Flujo de ventas, recibos |
+| costos | core | Entries de costos, valuacion |
+| usuarios | core | Gestion de usuarios, RBAC |
+| ubicaciones | core | Warehouses, locations, bins, mapa |
+| empaquetado | core | Catalogo de packaging |
+| precios | core | Listas de precios, upload CSV |
+| analytics | core | Dashboard, KPIs, graficos |
+| fotos | DLC | Procesamiento de fotos, galeria |
+| chatbot | DLC | Chat AI con streaming |
+
+No hay distincion mecanica core/DLC — todos se filtran igual. La distincion es semantica.
+
+#### Flujo completo
+
+```
+1. Usuario abre gobar.demeter.app
+2. Frontend resuelve tenant_id = "go-bar" (del subdominio)
+3. Frontend llama GET /api/v1/tenants/go-bar/config
+4. Backend devuelve TenantConfig con theme + enabledModules
+5. Frontend aplica:
+   ├── CSS variables en :root (4 colores del theme)
+   ├── Logo/nombre en header
+   ├── Sidebar: solo modulos en enabledModules
+   ├── Rutas: solo modulos en enabledModules
+   └── MobileNav: primeros 5 modulos habilitados
+6. Cada request API lleva Authorization: Bearer <jwt> + X-Tenant-ID: go-bar
+7. Backend filtra datos con RLS usando tenant_id
+```
+
+#### Tasks de implementacion
+
+- [x] **V4 Flyway migration** — `V4__create_tenants_table.sql`: CREATE TABLE tenants (id VARCHAR PK, name, industry, theme JSONB, enabled_modules JSONB, settings JSONB, active BOOLEAN, timestamps). NO tenant_id, NO RLS.
+- [x] **Tenant entity** — `Tenant.java` (replaced dead `TenantConfig.java`). String PK, @JdbcTypeCode(SqlTypes.JSON) for JSONB fields, @PrePersist/@PreUpdate timestamps.
+- [x] **TenantConfigResponse DTO** — record with TenantTheme sub-record. `from(Tenant)` mapper extracts theme keys.
+- [x] **CreateTenantRequest + UpdateTenantRequest DTOs** — Jakarta validation on create, nullable fields on update.
+- [x] **TenantRepository** — PanacheRepositoryBase<Tenant, String>
+- [x] **TenantConfigService** — findConfig, create, update, delete. Uses EntityNotFoundException for 404.
+- [x] **TenantConfigController** — GET /{tenantId}/config (@PermitAll) + GET/POST/PUT/DELETE admin (@RolesAllowed ADMIN)
+- [x] **Reemplazar TenantConfig.java** — dead record replaced with Tenant entity
+- [x] **Integration test** — TenantConfigTest: 7 tests (create, get config shape, 404, update, verify update, list, delete)
+- [ ] **Seed data** (opcional) — INSERT de 1-2 tenants de ejemplo en migration o import.sql para dev
+
+#### Decisiones de diseno clave
+
+1. **Tabla `tenants` NO tiene tenant_id** — es el registro maestro, no pertenece a ningun tenant
+2. **NO extiende BaseEntity** — PK es String slug (ej: "go-bar"), no UUID
+3. **NO tiene RLS** — todos los tenants son visibles para el sistema (el endpoint filtra por ID)
+4. **@PermitAll en GET config** — el frontend lo llama antes del login completo
+5. **theme y settings son JSONB** — extensibles sin migraciones futuras
+6. **enabledModules es JSONB array** — List<String> en Java, array de strings en PostgreSQL
+
+#### Archivos a crear/modificar
+
+| Archivo | Accion |
+|---------|--------|
+| `demeter-app/src/main/resources/db/migration/V4__create_tenants_table.sql` | CREATED |
+| `demeter-common/.../tenant/Tenant.java` | CREATED (replaced TenantConfig.java) |
+| `demeter-common/.../tenant/TenantRepository.java` | CREATED |
+| `demeter-common/.../tenant/TenantConfigResponse.java` | CREATED (DTO) |
+| `demeter-common/.../tenant/TenantTheme.java` | CREATED (DTO) |
+| `demeter-common/.../tenant/CreateTenantRequest.java` | CREATED (DTO) |
+| `demeter-common/.../tenant/UpdateTenantRequest.java` | CREATED (DTO) |
+| `demeter-common/.../tenant/TenantConfigService.java` | CREATED |
+| `demeter-common/.../tenant/TenantConfigController.java` | CREATED |
+| `demeter-app/src/test/.../integration/TenantConfigTest.java` | CREATED |
 
 ---
 
@@ -55,7 +160,8 @@
 | FASE 2 | DONE | BUILD SUCCESSFUL |
 | FASE 3 | DONE | BUILD SUCCESSFUL (2 cross-module fixes applied) |
 | FASE 4 | DONE | BUILD SUCCESSFUL |
-| FASE 5 | PENDING | — |
+| FASE 5 | DONE | ALL 42 TESTS PASSING |
+| FASE 6 | DONE | ALL 49 TESTS PASSING (42 + 7 TenantConfigTest) |
 
 ---
 
@@ -107,6 +213,7 @@ demeter-app (Quarkus main)
 | Fotos | `/api/v1/images` | read + detections/classifications |
 | Chatbot | `/api/v1/chat/sessions` | CRUD + messages |
 | Chatbot | `/api/v1/chat/messages` | read + tool executions |
+| Tenants | `/api/v1/tenants/{id}/config` | GET (@PermitAll) + CRUD admin (@RolesAllowed ADMIN) |
 
 ---
 
@@ -118,3 +225,8 @@ demeter-app (Quarkus main)
 4. **Gradle version upgrade** — changed from 6.8.1 to 9.3.1 (SDKMAN)
 5. **SaleCompletionService** — called non-existent `createSaleMovement()`, fixed to use `create(CreateStockMovementRequest)`
 6. **AnalyticsService** — 8 type mismatches (String vs enum, missing getters), all fixed
+7. **@TestSecurity for integration tests** — controllers use `@RolesAllowed`, added `@TestSecurity(user, roles=ADMIN)` to 4 test classes + `quarkus-test-security` dependency
+8. **DemeterTenantResolver JWT guard** — `JsonWebToken` proxy throws `IllegalStateException` when principal is not a real JWT (e.g. `@TestSecurity`), wrapped in try-catch
+9. **RlsConnectionCustomizer SET syntax** — PostgreSQL `SET` doesn't support `$1` parameters, changed to `SELECT set_config()` which does
+10. **MultiTenantIsolationTest cross-test contamination** — shared tenant IDs caused count mismatches, gave each test method unique tenant IDs
+11. **SaleFlowTest quantity assertion** — `BigDecimal("10")` serializes as integer `10`, not `10.0f`, fixed float comparison

@@ -31,9 +31,15 @@ public class DemeterTenantResolver implements TenantResolver {
     public String resolveTenantId() {
         String tenantId = null;
 
-        // Priority 1: JWT claim
-        if (jwt != null && jwt.containsClaim(TENANT_CLAIM)) {
-            tenantId = jwt.getClaim(TENANT_CLAIM);
+        // Priority 1: JWT claim (guarded because the proxy throws if the
+        // current principal is not a real JsonWebToken, e.g. during tests
+        // with @TestSecurity or when OIDC is disabled)
+        try {
+            if (jwt != null && jwt.containsClaim(TENANT_CLAIM)) {
+                tenantId = jwt.getClaim(TENANT_CLAIM);
+            }
+        } catch (IllegalStateException ignored) {
+            // Principal is not a JWT — fall through to header
         }
 
         // Priority 2: Header fallback (useful for dev/testing)

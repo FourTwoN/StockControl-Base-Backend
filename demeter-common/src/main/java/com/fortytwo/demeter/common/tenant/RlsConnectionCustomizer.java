@@ -24,7 +24,7 @@ public class RlsConnectionCustomizer implements AgroalPoolInterceptor {
         }
 
         if (tenantId != null && !tenantId.isBlank()) {
-            try (var stmt = connection.prepareStatement("SET app.current_tenant = ?")) {
+            try (var stmt = connection.prepareStatement("SELECT set_config('app.current_tenant', ?, true)")) {
                 stmt.setString(1, tenantId);
                 stmt.execute();
             } catch (SQLException e) {
@@ -35,7 +35,7 @@ public class RlsConnectionCustomizer implements AgroalPoolInterceptor {
 
     @Override
     public void onConnectionReturn(Connection connection) {
-        try (var stmt = connection.prepareStatement("RESET app.current_tenant")) {
+        try (var stmt = connection.prepareStatement("SELECT set_config('app.current_tenant', '', true)")) {
             stmt.execute();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to reset tenant context on connection", e);

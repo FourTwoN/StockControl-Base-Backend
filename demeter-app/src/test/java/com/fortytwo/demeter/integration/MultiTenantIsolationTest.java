@@ -1,6 +1,7 @@
 package com.fortytwo.demeter.integration;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.Test;
 
@@ -12,18 +13,21 @@ import static org.hamcrest.Matchers.notNullValue;
  * Verifies multi-tenant data isolation at the API level.
  * This is the most critical test in the suite: it ensures that
  * tenants cannot see or access each other's data.
+ *
+ * Each test method uses unique tenant IDs to prevent cross-test contamination.
  */
 @QuarkusTest
+@TestSecurity(user = "test-user", roles = {"ADMIN"})
 class MultiTenantIsolationTest {
-
-    private static final String TENANT_A = "tenant-alpha";
-    private static final String TENANT_B = "tenant-beta";
 
     @Test
     void tenantIsolation_productsShouldBeIsolated() {
-        // Create product for tenant-alpha
+        String tenantA = "tenant-iso-prod-a";
+        String tenantB = "tenant-iso-prod-b";
+
+        // Create product for tenant A
         String productAId = given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .contentType(ContentType.JSON)
                 .body("""
                         {"sku": "ISO-001", "name": "Alpha Product"}
@@ -36,9 +40,9 @@ class MultiTenantIsolationTest {
                 .body("name", equalTo("Alpha Product"))
                 .extract().path("id");
 
-        // Create product for tenant-beta (same SKU is allowed across tenants)
+        // Create product for tenant B (same SKU is allowed across tenants)
         String productBId = given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .contentType(ContentType.JSON)
                 .body("""
                         {"sku": "ISO-001", "name": "Beta Product"}
@@ -51,9 +55,9 @@ class MultiTenantIsolationTest {
                 .body("name", equalTo("Beta Product"))
                 .extract().path("id");
 
-        // Tenant-alpha sees only their product
+        // Tenant A sees only their product
         given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .when()
                 .get("/api/v1/products")
                 .then()
@@ -61,9 +65,9 @@ class MultiTenantIsolationTest {
                 .body("content.size()", equalTo(1))
                 .body("content[0].name", equalTo("Alpha Product"));
 
-        // Tenant-beta sees only their product
+        // Tenant B sees only their product
         given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .when()
                 .get("/api/v1/products")
                 .then()
@@ -71,17 +75,17 @@ class MultiTenantIsolationTest {
                 .body("content.size()", equalTo(1))
                 .body("content[0].name", equalTo("Beta Product"));
 
-        // Cross-tenant access: tenant-beta tries to get tenant-alpha's product by ID
+        // Cross-tenant access: tenant B tries to get tenant A's product by ID
         given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .when()
                 .get("/api/v1/products/" + productAId)
                 .then()
                 .statusCode(404);
 
-        // Cross-tenant access: tenant-alpha tries to get tenant-beta's product by ID
+        // Cross-tenant access: tenant A tries to get tenant B's product by ID
         given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .when()
                 .get("/api/v1/products/" + productBId)
                 .then()
@@ -90,9 +94,12 @@ class MultiTenantIsolationTest {
 
     @Test
     void tenantIsolation_stockBatchesShouldBeIsolated() {
+        String tenantA = "tenant-iso-batch-a";
+        String tenantB = "tenant-iso-batch-b";
+
         // Create a product for each tenant
         String productAId = given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .contentType(ContentType.JSON)
                 .body("""
                         {"sku": "BATCH-ISO-001", "name": "Alpha Batch Product"}
@@ -104,7 +111,7 @@ class MultiTenantIsolationTest {
                 .extract().path("id");
 
         String productBId = given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .contentType(ContentType.JSON)
                 .body("""
                         {"sku": "BATCH-ISO-001", "name": "Beta Batch Product"}
@@ -115,9 +122,9 @@ class MultiTenantIsolationTest {
                 .statusCode(201)
                 .extract().path("id");
 
-        // Create stock batch for tenant-alpha
+        // Create stock batch for tenant A
         String batchAId = given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .contentType(ContentType.JSON)
                 .body("""
                         {
@@ -133,9 +140,9 @@ class MultiTenantIsolationTest {
                 .statusCode(201)
                 .extract().path("id");
 
-        // Create stock batch for tenant-beta
+        // Create stock batch for tenant B
         given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .contentType(ContentType.JSON)
                 .body("""
                         {
@@ -150,9 +157,9 @@ class MultiTenantIsolationTest {
                 .then()
                 .statusCode(201);
 
-        // Tenant-alpha sees only their batch
+        // Tenant A sees only their batch
         given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .when()
                 .get("/api/v1/stock-batches")
                 .then()
@@ -160,9 +167,9 @@ class MultiTenantIsolationTest {
                 .body("content.size()", equalTo(1))
                 .body("content[0].batchCode", equalTo("BATCH-A-001"));
 
-        // Tenant-beta sees only their batch
+        // Tenant B sees only their batch
         given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .when()
                 .get("/api/v1/stock-batches")
                 .then()
@@ -172,7 +179,7 @@ class MultiTenantIsolationTest {
 
         // Cross-tenant access should be blocked
         given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .when()
                 .get("/api/v1/stock-batches/" + batchAId)
                 .then()
@@ -181,9 +188,12 @@ class MultiTenantIsolationTest {
 
     @Test
     void tenantIsolation_salesShouldBeIsolated() {
+        String tenantA = "tenant-iso-sale-a";
+        String tenantB = "tenant-iso-sale-b";
+
         // Create a product for each tenant
         String productAId = given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .contentType(ContentType.JSON)
                 .body("""
                         {"sku": "SALE-ISO-001", "name": "Alpha Sale Product"}
@@ -195,7 +205,7 @@ class MultiTenantIsolationTest {
                 .extract().path("id");
 
         String productBId = given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .contentType(ContentType.JSON)
                 .body("""
                         {"sku": "SALE-ISO-001", "name": "Beta Sale Product"}
@@ -206,9 +216,9 @@ class MultiTenantIsolationTest {
                 .statusCode(201)
                 .extract().path("id");
 
-        // Create sale for tenant-alpha
+        // Create sale for tenant A
         String saleAId = given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .contentType(ContentType.JSON)
                 .body("""
                         {
@@ -228,9 +238,9 @@ class MultiTenantIsolationTest {
                 .statusCode(201)
                 .extract().path("id");
 
-        // Create sale for tenant-beta
+        // Create sale for tenant B
         given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .contentType(ContentType.JSON)
                 .body("""
                         {
@@ -249,9 +259,9 @@ class MultiTenantIsolationTest {
                 .then()
                 .statusCode(201);
 
-        // Tenant-alpha sees only their sale
+        // Tenant A sees only their sale
         given()
-                .header("X-Tenant-ID", TENANT_A)
+                .header("X-Tenant-ID", tenantA)
                 .when()
                 .get("/api/v1/sales")
                 .then()
@@ -259,7 +269,7 @@ class MultiTenantIsolationTest {
 
         // Cross-tenant access to sale should be blocked
         given()
-                .header("X-Tenant-ID", TENANT_B)
+                .header("X-Tenant-ID", tenantB)
                 .when()
                 .get("/api/v1/sales/" + saleAId)
                 .then()

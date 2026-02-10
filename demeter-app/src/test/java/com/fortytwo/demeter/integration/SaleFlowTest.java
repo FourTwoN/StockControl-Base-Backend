@@ -1,6 +1,7 @@
 package com.fortytwo.demeter.integration;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -19,6 +20,7 @@ import static org.hamcrest.Matchers.notNullValue;
  */
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestSecurity(user = "test-user", roles = {"ADMIN"})
 class SaleFlowTest {
 
     private static final String TENANT = "tenant-sale-flow";
@@ -98,7 +100,7 @@ class SaleFlowTest {
                 .body("customerEmail", equalTo("john@example.com"))
                 .body("totalAmount", equalTo(255.00f))
                 .body("items.size()", equalTo(1))
-                .body("items[0].quantity", equalTo(10.0f))
+                .body("items[0].quantity", equalTo(10))
                 .body("items[0].unitPrice", equalTo(25.50f))
                 .extract().path("id");
     }

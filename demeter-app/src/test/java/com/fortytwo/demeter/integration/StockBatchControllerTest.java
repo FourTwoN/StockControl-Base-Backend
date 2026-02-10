@@ -1,6 +1,7 @@
 package com.fortytwo.demeter.integration;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.security.TestSecurity;
 import io.restassured.http.ContentType;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -14,6 +15,7 @@ import static org.hamcrest.Matchers.notNullValue;
 
 @QuarkusTest
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@TestSecurity(user = "test-user", roles = {"ADMIN"})
 class StockBatchControllerTest {
 
     private static final String TENANT = "tenant-stock-batch";
