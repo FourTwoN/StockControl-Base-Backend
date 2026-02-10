@@ -13,6 +13,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,8 +33,14 @@ public class StockMovementController {
             @QueryParam("size") @DefaultValue("20") int size,
             @QueryParam("batchId") UUID batchId,
             @QueryParam("type") String type,
-            @QueryParam("startDate") Instant startDate,
-            @QueryParam("endDate") Instant endDate) {
+            @QueryParam("startDate") String startDateStr,
+            @QueryParam("endDate") String endDateStr) {
+        Instant startDate = startDateStr != null
+                ? LocalDate.parse(startDateStr).atStartOfDay(ZoneOffset.UTC).toInstant()
+                : null;
+        Instant endDate = endDateStr != null
+                ? LocalDate.parse(endDateStr).atStartOfDay(ZoneOffset.UTC).plusDays(1).toInstant()
+                : null;
         return stockMovementService.findAll(page, size, batchId, type, startDate, endDate);
     }
 
@@ -54,8 +62,14 @@ public class StockMovementController {
     @Path("/by-date-range")
     @RolesAllowed({RoleConstants.ADMIN, RoleConstants.SUPERVISOR, RoleConstants.WORKER, RoleConstants.VIEWER})
     public List<StockMovementDTO> getByDateRange(
-            @QueryParam("from") Instant from,
-            @QueryParam("to") Instant to) {
+            @QueryParam("from") String fromStr,
+            @QueryParam("to") String toStr) {
+        Instant from = fromStr != null
+                ? LocalDate.parse(fromStr).atStartOfDay(ZoneOffset.UTC).toInstant()
+                : Instant.EPOCH;
+        Instant to = toStr != null
+                ? LocalDate.parse(toStr).atStartOfDay(ZoneOffset.UTC).plusDays(1).toInstant()
+                : Instant.now();
         return stockMovementService.findByDateRange(from, to);
     }
 

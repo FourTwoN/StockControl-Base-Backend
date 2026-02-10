@@ -13,6 +13,8 @@ import com.fortytwo.demeter.analytics.dto.TopProductSales;
 import com.fortytwo.demeter.analytics.service.AnalyticsService;
 import com.fortytwo.demeter.common.auth.RoleConstants;
 import com.fortytwo.demeter.common.dto.PagedResponse;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -47,8 +49,12 @@ public class AnalyticsController {
     public List<MovementSummary> getMovements(
             @QueryParam("from") String from,
             @QueryParam("to") String to) {
-        Instant fromInstant = from != null ? Instant.parse(from) : Instant.EPOCH;
-        Instant toInstant = to != null ? Instant.parse(to) : Instant.now();
+        Instant fromInstant = from != null
+                ? LocalDate.parse(from).atStartOfDay(ZoneOffset.UTC).toInstant()
+                : Instant.EPOCH;
+        Instant toInstant = to != null
+                ? LocalDate.parse(to).atStartOfDay(ZoneOffset.UTC).plusDays(1).toInstant()
+                : Instant.now();
         return analyticsService.getMovementsByDateRange(fromInstant, toInstant);
     }
 
@@ -90,8 +96,12 @@ public class AnalyticsController {
             @QueryParam("type") String movementType,
             @QueryParam("from") String from,
             @QueryParam("to") String to) {
-        Instant fromInstant = from != null ? Instant.parse(from) : null;
-        Instant toInstant = to != null ? Instant.parse(to) : null;
+        Instant fromInstant = from != null
+                ? LocalDate.parse(from).atStartOfDay(ZoneOffset.UTC).toInstant()
+                : null;
+        Instant toInstant = to != null
+                ? LocalDate.parse(to).atStartOfDay(ZoneOffset.UTC).plusDays(1).toInstant()
+                : null;
         return analyticsService.getMovementHistory(page, size, movementType, fromInstant, toInstant);
     }
 
@@ -108,8 +118,12 @@ public class AnalyticsController {
     public List<StockHistoryPointDTO> getStockHistory(
             @QueryParam("from") String from,
             @QueryParam("to") String to) {
-        Instant fromInstant = from != null ? Instant.parse(from) : Instant.now().minusSeconds(30L * 24 * 60 * 60);
-        Instant toInstant = to != null ? Instant.parse(to) : Instant.now();
+        Instant fromInstant = from != null
+                ? LocalDate.parse(from).atStartOfDay(ZoneOffset.UTC).toInstant()
+                : Instant.now().minusSeconds(30L * 24 * 60 * 60);
+        Instant toInstant = to != null
+                ? LocalDate.parse(to).atStartOfDay(ZoneOffset.UTC).plusDays(1).toInstant()
+                : Instant.now();
         return analyticsService.getStockHistory(fromInstant, toInstant);
     }
 
