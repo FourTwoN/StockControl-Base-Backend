@@ -18,7 +18,7 @@ import java.util.Optional;
  * <p>This controller is only active in dev profile and serves files
  * that were stored by {@link LocalStorageService}.
  *
- * <p>In production, files are served directly from GCS via signed URLs.
+ * <p>In production, files are served directly from cloud storage via signed URLs.
  */
 @Path("/api/v1/storage")
 @Tag(name = "Storage (Dev)", description = "Local file serving for development")

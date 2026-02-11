@@ -1,7 +1,7 @@
 -- =============================================
--- V5: Example tenants (CLEANED)
+-- V7: Cactus Mendoza seed data (CLEANED)
 -- =============================================
 -- This migration is intentionally empty.
 -- No seed data - database should start clean.
--- Tenants should be created via API/Admin UI.
+-- Data should be loaded via API/Admin UI.
 -- =============================================

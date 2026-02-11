@@ -7,4 +7,7 @@ dependencies {
 
     // Google Cloud Storage for image storage (production)
     implementation("com.google.cloud:google-cloud-storage:2.36.1")
+
+    // Google Cloud Tasks for async ML processing (production)
+    implementation("com.google.cloud:google-cloud-tasks:2.37.0")
 }
