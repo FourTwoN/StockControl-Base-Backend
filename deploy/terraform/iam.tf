@@ -56,3 +56,27 @@ resource "google_project_iam_member" "cloudrun_cloudsql" {
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.cloudrun.email}"
 }
+
+# =============================================================================
+# Service Account for Cloud Tasks Invoker
+# =============================================================================
+
+resource "google_service_account" "cloudtasks_invoker" {
+  account_id   = "demeter-cloudtasks-${var.environment}"
+  display_name = "Demeter Cloud Tasks Invoker (${var.environment})"
+  description  = "Service account for creating Cloud Tasks to invoke ML Worker"
+}
+
+# Grant Cloud Tasks Enqueuer role to backend service account
+resource "google_project_iam_member" "cloudrun_cloudtasks_enqueuer" {
+  project = var.project_id
+  role    = "roles/cloudtasks.enqueuer"
+  member  = "serviceAccount:${google_service_account.cloudrun.email}"
+}
+
+# Grant the cloudtasks invoker permission to use service account for OIDC tokens
+resource "google_service_account_iam_member" "cloudtasks_invoker_token" {
+  service_account_id = google_service_account.cloudtasks_invoker.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.cloudrun.email}"
+}

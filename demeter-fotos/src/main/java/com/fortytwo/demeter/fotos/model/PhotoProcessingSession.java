@@ -30,7 +30,7 @@ public class PhotoProcessingSession extends BaseEntity {
     private int processedImages;
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<S3Image> images = new ArrayList<>();
+    private List<Image> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Estimation> estimations = new ArrayList<>();
@@ -42,7 +42,7 @@ public class PhotoProcessingSession extends BaseEntity {
     public UUID getUploadedBy() { return uploadedBy; }
     public int getTotalImages() { return totalImages; }
     public int getProcessedImages() { return processedImages; }
-    public List<S3Image> getImages() { return images; }
+    public List<Image> getImages() { return images; }
     public List<Estimation> getEstimations() { return estimations; }
 
     // Setters

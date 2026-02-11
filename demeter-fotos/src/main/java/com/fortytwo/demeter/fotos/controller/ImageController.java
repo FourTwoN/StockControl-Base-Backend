@@ -3,7 +3,7 @@ package com.fortytwo.demeter.fotos.controller;
 import com.fortytwo.demeter.common.auth.RoleConstants;
 import com.fortytwo.demeter.fotos.dto.ClassificationDTO;
 import com.fortytwo.demeter.fotos.dto.DetectionDTO;
-import com.fortytwo.demeter.fotos.dto.S3ImageDTO;
+import com.fortytwo.demeter.fotos.dto.ImageDTO;
 import com.fortytwo.demeter.fotos.service.ImageService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
@@ -23,7 +23,7 @@ public class ImageController {
     @GET
     @Path("/{id}")
     @RolesAllowed({RoleConstants.ADMIN, RoleConstants.SUPERVISOR, RoleConstants.WORKER, RoleConstants.VIEWER})
-    public S3ImageDTO getById(@PathParam("id") UUID id) {
+    public ImageDTO getById(@PathParam("id") UUID id) {
         return imageService.findById(id);
     }
 

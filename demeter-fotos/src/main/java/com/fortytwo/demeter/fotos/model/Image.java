@@ -7,7 +7,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "images")
-public class S3Image extends BaseEntity {
+public class Image extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "session_id", nullable = false)

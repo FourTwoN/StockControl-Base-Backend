@@ -57,6 +57,30 @@ resource "google_cloud_run_v2_service" "backend" {
       }
 
       # =======================================================================
+      # Cloud Tasks Configuration
+      # =======================================================================
+
+      env {
+        name  = "GCP_PROJECT_ID"
+        value = var.project_id
+      }
+
+      env {
+        name  = "GCP_REGION"
+        value = var.region
+      }
+
+      env {
+        name  = "ML_WORKER_URL"
+        value = var.mlworker_url
+      }
+
+      env {
+        name  = "CLOUDTASKS_SA_EMAIL"
+        value = google_service_account.cloudtasks_invoker.email
+      }
+
+      # =======================================================================
       # Database Secrets
       # =======================================================================
 

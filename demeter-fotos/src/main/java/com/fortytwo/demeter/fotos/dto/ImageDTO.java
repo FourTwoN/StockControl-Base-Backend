@@ -1,10 +1,10 @@
 package com.fortytwo.demeter.fotos.dto;
 
-import com.fortytwo.demeter.fotos.model.S3Image;
+import com.fortytwo.demeter.fotos.model.Image;
 import java.time.Instant;
 import java.util.UUID;
 
-public record S3ImageDTO(
+public record ImageDTO(
     UUID id,
     UUID sessionId,
     String storageUrl,
@@ -17,8 +17,8 @@ public record S3ImageDTO(
     Instant createdAt,
     Instant updatedAt
 ) {
-    public static S3ImageDTO from(S3Image img) {
-        return new S3ImageDTO(
+    public static ImageDTO from(Image img) {
+        return new ImageDTO(
             img.getId(),
             img.getSession() != null ? img.getSession().getId() : null,
             img.getStorageUrl(),

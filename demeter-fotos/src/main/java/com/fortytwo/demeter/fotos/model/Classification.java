@@ -23,7 +23,7 @@ public class Classification {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "image_id", nullable = false)
-    private S3Image image;
+    private Image image;
 
     @Column(nullable = false)
     private String category;
@@ -46,14 +46,14 @@ public class Classification {
     // Getters
     public UUID getId() { return id; }
     public String getTenantId() { return tenantId; }
-    public S3Image getImage() { return image; }
+    public Image getImage() { return image; }
     public String getCategory() { return category; }
     public BigDecimal getConfidence() { return confidence; }
     public Map<String, Object> getMetadata() { return metadata; }
     public Instant getCreatedAt() { return createdAt; }
 
     // Setters
-    public void setImage(S3Image image) { this.image = image; }
+    public void setImage(Image image) { this.image = image; }
     public void setCategory(String category) { this.category = category; }
     public void setConfidence(BigDecimal confidence) { this.confidence = confidence; }
     public void setMetadata(Map<String, Object> metadata) { this.metadata = metadata; }

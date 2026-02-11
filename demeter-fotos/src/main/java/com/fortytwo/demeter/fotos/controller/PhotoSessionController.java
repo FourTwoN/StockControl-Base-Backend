@@ -5,7 +5,7 @@ import com.fortytwo.demeter.common.dto.PagedResponse;
 import com.fortytwo.demeter.fotos.dto.CreatePhotoSessionRequest;
 import com.fortytwo.demeter.fotos.dto.EstimationDTO;
 import com.fortytwo.demeter.fotos.dto.PhotoSessionDTO;
-import com.fortytwo.demeter.fotos.dto.S3ImageDTO;
+import com.fortytwo.demeter.fotos.dto.ImageDTO;
 import com.fortytwo.demeter.fotos.dto.SessionStatusDTO;
 import com.fortytwo.demeter.fotos.service.ImageService;
 import com.fortytwo.demeter.fotos.service.PhotoSessionService;
@@ -69,7 +69,7 @@ public class PhotoSessionController {
     @GET
     @Path("/{id}/images")
     @RolesAllowed({RoleConstants.ADMIN, RoleConstants.SUPERVISOR, RoleConstants.WORKER, RoleConstants.VIEWER})
-    public List<S3ImageDTO> getImages(@PathParam("id") UUID id) {
+    public List<ImageDTO> getImages(@PathParam("id") UUID id) {
         return imageService.findBySession(id);
     }
 

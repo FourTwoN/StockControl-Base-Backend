@@ -15,6 +15,9 @@ dependencies {
     // Cloud SQL Socket Factory for Cloud Run deployment
     api("com.google.cloud.sql:postgres-socket-factory:1.21.0")
 
+    // Google Cloud Tasks for background ML processing
+    api("com.google.cloud:google-cloud-tasks:2.56.0")
+
     testImplementation("io.quarkus:quarkus-junit5")
     testImplementation("io.quarkus:quarkus-junit5-mockito")
 }

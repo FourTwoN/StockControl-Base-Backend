@@ -123,3 +123,13 @@ variable "frontend_domains" {
   default     = []
   description = "List of frontend domains for CORS (e.g., [\"cultivos.demeter.app\", \"vending.demeter.app\"])"
 }
+
+# =============================================================================
+# ML Worker Integration
+# =============================================================================
+
+variable "mlworker_url" {
+  type        = string
+  default     = ""
+  description = "ML Worker Cloud Run URL for Cloud Tasks (e.g., https://demeter-mlworker-prod.run.app)"
+}
