@@ -918,6 +918,7 @@ us-central1-docker.pkg.dev/PROJECT/
 |-----------|-----------|
 | Language | Java 25 |
 | Framework | Quarkus 3.31.2 |
+| Concurrency | **Virtual Threads (Project Loom)** |
 | ORM | Hibernate with Panache |
 | Database | PostgreSQL 17 |
 | Multi-Tenancy | Hibernate Discriminator + PostgreSQL RLS |
@@ -930,3 +931,137 @@ us-central1-docker.pkg.dev/PROJECT/
 | Task Queue | Google Cloud Tasks |
 | Storage | Google Cloud Storage (provider-agnostic interface) |
 | Registry | Google Artifact Registry |
+
+---
+
+## Virtual Threads (Project Loom)
+
+Demeter uses **Virtual Threads** (Java 21+ Project Loom) for all blocking operations. This is enabled globally via:
+
+```properties
+quarkus.virtual-threads.enabled=true
+```
+
+### Why Virtual Threads?
+
+| Aspect | Traditional Threads | Virtual Threads |
+|--------|---------------------|-----------------|
+| Memory per thread | ~1MB | ~1KB |
+| Max concurrent | ~200 (pool size) | Millions |
+| Code style | Blocking (simple) | Blocking (simple) |
+| Stack traces | Clear | Clear |
+| Debugging | Easy | Easy |
+
+Virtual Threads give us the **simplicity of blocking code** with the **scalability of reactive programming**.
+
+### How It Works
+
+```
+Request 1 ──▶ [VThread-1] ──▶ DB Query ──▶ (suspended, carrier free) ──▶ Response
+Request 2 ──▶ [VThread-2] ──▶ DB Query ──▶ (suspended, carrier free) ──▶ Response
+Request 3 ──▶ [VThread-3] ──▶ DB Query ──▶ (suspended, carrier free) ──▶ Response
+         ...
+Request 10000 ──▶ [VThread-10000] ──▶ (all running on ~10 carrier threads)
+```
+
+When a Virtual Thread blocks on I/O (database, HTTP, file), the JVM automatically:
+1. **Suspends** the Virtual Thread
+2. **Releases** the carrier thread to handle other Virtual Threads
+3. **Resumes** when I/O completes
+
+### No Code Changes Required
+
+With `quarkus.virtual-threads.enabled=true`, all endpoints automatically use Virtual Threads:
+
+```java
+@GET
+@Path("/{id}")
+public Product findById(@PathParam("id") UUID id) {
+    // This blocking call runs on a Virtual Thread
+    // Thread is suspended during DB I/O, carrier is free
+    return productRepository.findById(id);
+}
+```
+
+---
+
+## Panache and Database Queries
+
+### What is Panache?
+
+Panache is a layer over **Hibernate ORM** that simplifies data access. Demeter uses the **Repository pattern**:
+
+```java
+// Entity (data only)
+@Entity
+public class Product extends BaseEntity {
+    public String name;
+    public BigDecimal price;
+
+    @ManyToOne
+    public Category category;
+}
+
+// Repository (queries)
+@ApplicationScoped
+public class ProductRepository implements PanacheRepositoryBase<Product, UUID> {
+    // Built-in: findById, listAll, persist, delete, count, etc.
+}
+```
+
+### Query Options by Complexity
+
+| Complexity | Tool | Example |
+|------------|------|---------|
+| **CRUD basico** | Panache built-in | `findById()`, `listAll()`, `persist()` |
+| **Filtros simples** | PQL (Panache Query Language) | `list("price > ?1", 100)` |
+| **Joins simples** | JPQL en `find()` | `find("SELECT p FROM Product p JOIN FETCH p.category")` |
+| **Joins complejos** | JPQL con `createQuery()` | Agregaciones, subqueries, DTOs |
+| **Features PostgreSQL** | SQL Nativo | CTEs, window functions, JSONB operators |
+
+### Examples
+
+**Simple filter (PQL):**
+```java
+List<Product> products = productRepository.list(
+    "category.name = ?1 and price > ?2",
+    "Bebidas",
+    new BigDecimal("100")
+);
+```
+
+**Complex join (JPQL):**
+```java
+public List<ProductSalesReport> getTopSellingProducts(LocalDate from, LocalDate to) {
+    return getEntityManager().createQuery("""
+        SELECT new com.fortytwo.demeter.dto.ProductSalesReport(
+            p.id, p.name, SUM(si.quantity), SUM(si.quantity * si.unitPrice)
+        )
+        FROM Product p
+        JOIN StockBatch sb ON sb.product = p
+        JOIN SaleItem si ON si.product = p
+        WHERE si.sale.completedAt BETWEEN :from AND :to
+        GROUP BY p.id, p.name
+        ORDER BY SUM(si.quantity) DESC
+        """, ProductSalesReport.class)
+        .setParameter("from", from)
+        .setParameter("to", to)
+        .setMaxResults(10)
+        .getResultList();
+}
+```
+
+**Native SQL (PostgreSQL features):**
+```java
+public List<Object[]> getInventoryWithJsonb() {
+    return getEntityManager().createNativeQuery("""
+        SELECT
+            p.name,
+            sb.quantity,
+            sb.custom_attributes->>'origin' as origin
+        FROM products p
+        JOIN stock_batches sb ON sb.product_id = p.id
+        WHERE sb.tenant_id = current_setting('app.current_tenant')
+        """)
+        .getResultList();
+}
