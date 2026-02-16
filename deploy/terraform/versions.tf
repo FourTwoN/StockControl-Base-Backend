@@ -13,7 +13,7 @@ terraform {
   }
 
   backend "gcs" {
-    bucket = "demeter-terraform-state"
+    bucket = "demeter-ai-v2-terraform-state"
     prefix = "backend"
   }
 }
